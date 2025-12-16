@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>开饭倒计时</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+  :root{
+    --bg:#fff5e3;
+    --accent:#ff8c00;
+    --accent2:#ff4d00;
+    --text:#333;
+    --card:#fff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'ZCOOL KuaiLe',cursive;}
+  body{
+    background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100vh;padding:20px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cpath fill='%23ff8c00' fill-opacity='.15' d='M60 0L80 40L120 60L80 80L60 120L40 80L0 60L40 40z'/%3E%3C/svg%3E");
+    background-size:120px;
+  }
+  h1{color:var(--accent2);font-size:2.2em;margin-bottom:10px;text-shadow:2px 2px 0 #fff;}
+  .card{
+    background:var(--card);border-radius:20px;
+    box-shadow:0 8px 20px rgba(0,0,0,.1);
+    padding:30px 40px;text-align:center;
+  }
+  .clock{
+    display:flex;gap:15px;justify-content:center;margin:20px 0;
+  }
+  .unit{
+    background:var(--accent);color:#fff;border-radius:12px;
+    width:80px;height:90px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;font-size:2em;font-weight:bold;
+    box-shadow:0 4px 10px rgba(255,140,0,.4);
+  }
+  .unit span{font-size:.35em;font-weight:normal;}
+  .msg{font-size:1.4em;color:var(--accent2);margin-top:10px;}
+  .setBox{margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  input[type=time]{padding:6px 10px;border:2px solid var(--accent);border-radius:8px;font-size:1em;}
+  button{
+    padding:6px 14px;border:none;border-radius:8px;background:var(--accent2);color:#fff;font-size:1em;cursor:pointer;
+    box-shadow:0 4px 8px rgba(255,77,0,.3);
+  }
+  button:hover{filter:brightness(1.1);}
+  .food{position:absolute;z-index:-1;opacity:.25;font-size:3em;pointer-events:none;}
+  .food1{top:10%;left:5%;transform:rotate(-20deg);}
+  .food2{top:15%;right:8%;transform:rotate(15deg);}
+  .food3{bottom:10%;left:7%;transform:rotate(25deg);}
+  .food4{bottom:15%;right:5%;transform:rotate(-10deg);}
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.5);
+    display:flex;align-items:center;justify-content:center;
+    animation:fadeIn .5s ease;
+  }
+  .pop{
+    background:#fff;border-radius:20px;
+    padding:40px 50px;text-align:center;
+    box-shadow:0 0 30px rgba(255,140,0,.6);
+    animation:slideUp .6s ease;
+  }
+  .pop .emoji{font-size:4em;display:inline-block;animation:spin 2s linear infinite;}
+  .pop .title{font-size:2.2em;color:var(--accent2);margin:15px 0;animation:pulse 1s infinite;}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  @keyframes slideUp{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+</style>
+</head>
+<body>
+<div class="food food1">🍗</div>
+<div class="food food2">🍜</div>
+<div class="food food3">🍚</div>
+<div class="food food4">🥟</div>
+
+<h1>开饭倒计时</h1>
+<div class="card">
+  <div class="clock">
+    <div class="unit"><span>时</span><div id="h">00</div></div>
+    <div class="unit"><span>分</span><div id="m">00</div></div>
+    <div class="unit"><span>秒</span><div id="s">00</div></div>
+  </div>
+  <div class="msg" id="msg">距离中午开饭还有</div>
+  <div class="setBox">
+    <input type="time" id="t1" value="12:00">
+    <input type="time" id="t2" value="18:00">
+    <button onclick="saveTime()">保存时间</button>
+  </div>
+</div>
+
+<audio id="bell" preload="auto">
+  <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmFgU7k9n1unEiBC13yO/eizEIHWq+8+OWT" type="audio/wav">
+</audio>
+
+<script>
+const $=s=>document.getElementById(s);
+let t1='12:00',t2='18:00',timer,popTimer;
+if(localStorage.getItem('mealTimes')){
+  [t1,t2]=JSON.parse(localStorage.getItem('mealTimes'));
+  $('t1').value=t1;$('t2').value=t2;
+}
+function saveTime(){
+  t1=$('t1').value;t2=$('t2').value;
+  localStorage.setItem('mealTimes',JSON.stringify([t1,t2]));
+  location.reload();
+}
+function parseT(str){
+  const [h,m]=str.split(':').map(Number);
+  return h*3600+m*60;
+}
+function fmt(n){return n.toString().padStart(2,'0');}
+function ring(){try{$('bell').play()}catch(e){}}
+function showPop(){
+  const wrap=document.createElement('div');wrap.className='overlay';
+  wrap.innerHTML=`<div class="pop"><div class="emoji">🍚</div><div class="title">吃饭啦</div></div>`;
+  document.body.appendChild(wrap);
+  popTimer=setTimeout(()=>{document.body.removeChild(wrap);},10000);
+}
+function tick(){
+  const now=new Date();
+  const secNow=now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
+  let s1=parseT(t1),s2=parseT(t2);
+  let next,label;
+  if(secNow<s1){next=s1;label='距离中午开饭还有';}
+  else if(secNow<s2){next=s2;label='距离晚上开饭还有';}
+  else{next=s1+24*3600;label='距离次日中午开饭还有';}
+  let diff=next-secNow;
+  if(diff===0){$('msg').textContent='朝廷的救济粮下来了！🎉';ring();showPop();return;}
+  $('h').textContent=fmt(Math.floor(diff/3600));
+  $('m').textContent=fmt(Math.floor(diff%3600/60));
+  $('s').textContent=fmt(diff%60);
+  $('msg').textContent=label;
+}
+tick();timer=setInterval(tick,1000);
+</script>
+</body>
+</html>
